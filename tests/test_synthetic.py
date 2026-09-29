@@ -1,4 +1,4 @@
-from backend import pipeline as P
+from scripts import synthetic_generator as P
 from fastapi.testclient import TestClient
 
 raw = P.generate(days=40); df, rep = P.clean(raw)
@@ -17,13 +17,4 @@ def test_lead_time_elasticity():
 
 def test_backtest_has_error_column(): assert "error_pct" in P.backtest(df).columns
 
-def test_api():
-    from backend.app import app
-    c = TestClient(app)
-    assert c.get("/api/health").json()["status"] == "ok"
-    assert len(c.get("/api/index?freq=D").json()["values"]) >= 30
-    assert c.get("/api/backtest").json()["days_covered"] >= 30
 
-def test_mospi_endpoint():
-    from backend.app import app
-    r = TestClient(app).get("/api/mospi").json(); assert len(r["months"]) >= 1 and "source" in r

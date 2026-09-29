@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  api:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    image: apix-backend:latest
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      - APP_ENV=production
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-apix_user}:${POSTGRES_PASSWORD:-change_me}@db:5432/${POSTGRES_DB:-apix}
+      - API_KEY=${API_KEY:-dev-api-key}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - apix_network
+
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-apix_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      POSTGRES_DB: ${POSTGRES_DB:-apix}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-apix_user} -d ${POSTGRES_DB:-apix}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - apix_network
+
+  redis:
+    image: redis:7
+    ports:
+      - "127.0.0.1:6379:6379"
+    networks:
+      - apix_network
+
+volumes:
+  pgdata:
+
+networks:
+  apix_network:
+    driver: bridge

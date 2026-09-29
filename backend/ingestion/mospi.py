@@ -3,7 +3,7 @@ Sync live data:  python -m backend.mospi   -> writes data/mospi_cpi.csv (month,c
 NOTE: column/filter names come from the live API (esankhyiki.get_metadata("CPI", ...)); adjust FILTERS/heuristics if needed."""
 import pandas as pd
 from pathlib import Path
-D = Path(__file__).parent.parent / "data"
+D = Path(__file__).parent.parent.parent / "data"
 FILTERS = {"base_year": "2024", "level": "Item"}  # verify with esankhyiki.get_metadata("CPI", base_year=..., level=...)
 
 def sync():
