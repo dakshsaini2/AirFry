@@ -274,6 +274,52 @@ export default function App() {
               <ProvenanceFooter dataset={datasetVersion} updated={data.summary?.last_run} />
             </div>
           </div>
+
+          {/* Row 2: Heatmap + Carrier Breakdown */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+            {/* Sector-wise Heatmap */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 h-[430px] flex flex-col">
+              <h3 className="font-[Poppins] font-semibold text-lg text-[#0B1F3A] flex items-center gap-2 mb-4">
+                <span className="w-1.5 h-6 bg-[#1F3C88] rounded-full inline-block" /> Sector-wise Fare Heatmap
+              </h3>
+              <div className="flex-1 min-h-0">
+                {data.heatmap && data.heatmap.routes?.length > 0 && <ReactEcharts option={{
+                  tooltip: { position: 'top', formatter: (p: any) => `${data.heatmap.routes[p.data[1]]} @ T+${data.heatmap.leads[p.data[0]]}<br/>₹${p.data[2]?.toLocaleString('en-IN') || 0}` },
+                  grid: { top: 10, right: 30, bottom: 40, left: 90, containLabel: false },
+                  xAxis: { type: 'category', data: data.heatmap.leads?.map((l: any) => `T+${l}`) || [], axisLabel: { color: '#64748b', fontWeight: 'bold' }, splitArea: { show: true, areaStyle: { color: ['rgba(250,250,250,0.3)', 'rgba(200,200,200,0.1)'] } } },
+                  yAxis: { type: 'category', data: data.heatmap.routes || [], axisLabel: { color: '#64748b', fontSize: 11 } },
+                  visualMap: { min: Math.min(...(data.heatmap.z?.flat() || [0]).filter((v: any) => v > 0)), max: Math.max(...(data.heatmap.z?.flat() || [1])), calculable: true, orient: 'vertical', right: 0, top: 'center', itemHeight: 120, textStyle: { color: '#64748b' }, inRange: { color: ['#e0f2fe', '#7dd3fc', '#38bdf8', '#0284c7', '#075985'] } },
+                  series: [{ type: 'heatmap', data: (data.heatmap.z || []).flatMap((row: any[], ri: number) => row.map((val: number, ci: number) => [ci, ri, Math.round(val)])), label: { show: true, formatter: (p: any) => `₹${(p.data[2] / 1000).toFixed(1)}k`, fontSize: 10, color: '#1e293b' }, emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.3)' } } }]
+                }} style={{height: '100%', width: '100%'}} />}
+                {(!data.heatmap || !data.heatmap.routes?.length) && <div className="flex items-center justify-center h-full text-slate-400 text-sm">No heatmap data available</div>}
+              </div>
+              <ProvenanceFooter dataset={datasetVersion} updated={data.summary?.last_run} />
+            </div>
+
+            {/* Carrier Fare Breakdown */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 h-[430px] flex flex-col">
+              <h3 className="font-[Poppins] font-semibold text-lg text-[#0B1F3A] flex items-center gap-2 mb-4">
+                <span className="w-1.5 h-6 bg-[#FF9933] rounded-full inline-block" /> Carrier Fare Breakdown
+              </h3>
+              <div className="flex-1 min-h-0">
+                {data.carriers && data.carriers.carriers?.length > 0 && <ReactEcharts option={{
+                  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: (params: any) => { let s = `<b>${params[0].axisValue}</b><br/>`; let total = 0; params.forEach((p: any) => { s += `${p.marker} ${p.seriesName}: ₹${p.value?.toLocaleString('en-IN') || 0}<br/>`; total += (p.value || 0); }); s += `<b>Total: ₹${total.toLocaleString('en-IN')}</b>`; return s; } },
+                  legend: { top: 0, itemWidth: 12, itemHeight: 12, textStyle: { color: '#64748b' } },
+                  grid: { top: 40, right: 10, bottom: 20, left: 50, containLabel: true },
+                  xAxis: { type: 'category', data: data.carriers.carriers, axisLabel: { color: '#64748b', rotate: 15, fontSize: 11 }, axisLine: { lineStyle: { color: '#cbd5e1' } } },
+                  yAxis: { type: 'value', axisLabel: { formatter: '₹{value}', color: '#64748b' }, splitLine: { lineStyle: { type: 'dashed', color: '#f1f5f9' } } },
+                  series: [
+                    { name: 'Base Fare', type: 'bar', stack: 'fare', itemStyle: { color: '#3b82f6', borderRadius: [0,0,0,0] }, data: data.carriers.base },
+                    { name: 'Taxes', type: 'bar', stack: 'fare', itemStyle: { color: '#f59e0b' }, data: data.carriers.taxes },
+                    { name: 'UDF', type: 'bar', stack: 'fare', itemStyle: { color: '#10b981' }, data: data.carriers.udf },
+                    { name: 'Conv. Fee', type: 'bar', stack: 'fare', itemStyle: { color: '#ef4444', borderRadius: [4,4,0,0] }, data: data.carriers.convenience }
+                  ]
+                }} style={{height: '100%', width: '100%'}} />}
+                {(!data.carriers || !data.carriers.carriers?.length) && <div className="flex items-center justify-center h-full text-slate-400 text-sm">No carrier data available</div>}
+              </div>
+              <ProvenanceFooter dataset={datasetVersion} updated={data.summary?.last_run} />
+            </div>
+          </div>
         </div>
 
         {/* OFFICIAL VALIDATION SECTION */}

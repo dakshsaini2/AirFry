@@ -101,8 +101,13 @@ class IndexEngineService:
         from ..models import Weight
         weights = self.db.query(Weight).filter(Weight.version == "2026-v1").all()
         if not weights:
-            # Fallback to mock weights if none in DB
-            from ..pipeline import ROUTES
+            # Fallback to hardcoded DGCA traffic-share weights if none in DB
+            ROUTES = {
+                "DEL-BOM": (.20, 5200), "DEL-BLR": (.15, 6100), "BOM-BLR": (.11, 4300),
+                "DEL-CCU": (.10, 5600), "MAA-DEL": (.08, 6300), "DEL-HYD": (.08, 5400),
+                "DEL-PNQ": (.08, 4800), "BLR-HYD": (.07, 2900), "BOM-HYD": (.07, 3600),
+                "BOM-GOI": (.06, 3000)
+            }
             df = pd.DataFrame([{'route_id': r, 'w_r': w[0]} for r, w in ROUTES.items()])
             df['carrier'] = None
             df['lead_days'] = None
