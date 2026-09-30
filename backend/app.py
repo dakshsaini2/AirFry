@@ -33,6 +33,63 @@ async def lifespan(app: FastAPI):
         db.add(Source(name="IndiGo", type="airline", base_url="https://www.goindigo.in/"))
         db.add(Source(name="MakeMyTrip", type="ota", base_url="https://www.makemytrip.com/"))
         db.commit()
+    
+    # Auto-seed synthetic data if DB is empty (so dashboard has data on first deploy)
+    if db.query(Fare).count() == 0:
+        try:
+            print("DB is empty — auto-seeding synthetic data for demo...")
+            import sys, importlib
+            scripts_path = str(Path(__file__).parent.parent / "scripts")
+            if scripts_path not in sys.path:
+                sys.path.insert(0, scripts_path)
+            from scripts import synthetic_generator as P
+
+            # Seed additional routes & sources
+            if db.query(Route).count() < len(P.ROUTES):
+                for r, (share, base) in P.ROUTES.items():
+                    if not db.query(Route).filter(Route.id == r).first():
+                        origin, dest = r.split("-")
+                        db.add(Route(id=r, origin=origin, dest=dest, dgca_pax_share=share))
+                db.commit()
+
+            source_names = ["IndiGo", "MakeMyTrip", "Yatra", "EaseMyTrip", "Cleartrip", "Ixigo", "Goibibo", "Air India", "SpiceJet", "Akasa Air", "Air India Express"]
+            for s in source_names:
+                if not db.query(Source).filter(Source.name == s).first():
+                    db.add(Source(name=s, type="ota" if s not in ["IndiGo", "Air India", "SpiceJet", "Akasa Air", "Air India Express"] else "airline", base_url=f"https://www.{s.lower().replace(' ', '')}.com/"))
+            db.commit()
+
+            # Load DGCA reference data
+            ref_path = Path(__file__).parent.parent / "data" / "dgca_monthly.csv"
+            if ref_path.exists() and db.query(DGCAMonthly).count() == 0:
+                ref = pd.read_csv(ref_path)
+                for _, row in ref.iterrows():
+                    db.add(DGCAMonthly(month=row['month'], sector="all", avg_fare=row['avg_fare_inr'], source="synthetic_mock", data_mode="synthetic"))
+                db.commit()
+
+            # Generate synthetic fares
+            raw = P.generate(days=35, seed=42)
+            df_clean, _ = P.clean(raw)
+            source_map = {s.name: s.id for s in db.query(Source).all()}
+
+            fares = []
+            for _, row in df_clean.iterrows():
+                dt = datetime.combine(row['date'], datetime.min.time())
+                f = Fare(
+                    route_id=row['route'], carrier=row['carrier'], flight_no="SEED",
+                    dep_dt=dt, dep_bucket="morning", lead_days=row['lead'],
+                    fare_class=row['fare_class'], base_fare=row['base'],
+                    taxes=row['taxes'], udf=row['udf'], conv_fee=row['convenience'],
+                    total_fare=row['total'], source_id=source_map.get(row['source']),
+                    is_soldout=False, is_outlier=False, data_mode="synthetic", scraped_at=dt
+                )
+                fares.append(f)
+
+            db.bulk_save_objects(fares)
+            db.commit()
+            print(f"Auto-seeded {len(fares)} synthetic fare records.")
+        except Exception as e:
+            print(f"Auto-seed failed (non-fatal): {e}")
+            db.rollback()
     yield
 
 app = FastAPI(title="APIx - Airfare Price Index API", version="1.0", lifespan=lifespan)
