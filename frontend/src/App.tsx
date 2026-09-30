@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Download, Play, Plane, Activity, Calendar, ShieldCheck, Zap, Info, X } from 'lucide-react';
+import { Download, Play, Plane, Activity, Calendar, ShieldCheck, Info, X } from 'lucide-react';
 import ReactEcharts from 'echarts-for-react';
 import * as api from './api';
 import './index.css';
